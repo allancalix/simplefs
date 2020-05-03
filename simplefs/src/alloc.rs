@@ -47,15 +47,6 @@ impl Bitmap {
         }
     }
 
-    pub fn get_next_free(&self) -> usize {
-        for i in 0..(BLOCK_SIZE * 8) {
-            if let State::Free = self.get(i) {
-                return i;
-            }
-        }
-        panic!("Out of space!")
-    }
-
     pub fn set_reserved(&mut self, blocknr: usize) {
         assert!(blocknr < (4096 * 8 - 1));
         // Grab of the u64 containing the significant bit.
