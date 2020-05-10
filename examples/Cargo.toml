@@ -1,0 +1,11 @@
+[package]
+name = "examples"
+version = "0.1.0"
+edition = "2018"
+
+[[bin]]
+name = "hello"
+path = "src/hello.rs"
+
+[dependencies]
+simplefs-fuse = { path = "../simplefs-fuse" }

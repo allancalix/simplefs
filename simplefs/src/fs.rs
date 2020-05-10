@@ -132,6 +132,30 @@ impl<T: BlockStorage> SFS<T> {
         })
     }
 
+    pub fn mkdir<P: AsRef<Path> + std::fmt::Display>(&mut self, path: P) -> Result<u32, SFSError> {
+        let parent_dir = path.as_ref().parent();
+        if parent_dir.is_none() {
+            return Err(SFSError::InvalidArgument(format!(
+                r#"could not parse parent directory from "{}""#,
+                path
+            )));
+        }
+
+        let filename = path.as_ref().file_name().unwrap();
+        let parent = self.open(parent_dir.unwrap(), OpenMode::RO)?;
+        let mut parent_content = self.read_dir(parent)?;
+        match parent_content.get(filename) {
+            // TODO(allancalix): Check spec as to whether this an error, noop, or what.
+            Some(_) => Err(SFSError::InvalidArgument("file already exists".to_string())),
+            None => {
+                let new_node = self.inodes.new_file();
+                parent_content.insert(OsString::from(filename), new_node);
+                self.write_dir(parent, parent_content)?;
+                Ok(new_node)
+            }
+        }
+    }
+
     /// Opens a file descriptor at the path provided. By default, this implementation will return an
     /// error if the file does not exists. Set OpenMode to override the behavior and create a file or
     /// directory.
@@ -203,6 +227,8 @@ impl<T: BlockStorage> SFS<T> {
             let new_blocks: Vec<u32> = (0..(needed - have))
                 // Panics if no free blocks are available.
                 .map(|_| alloc_gen.next().unwrap() as u32)
+                // TODO(allancalix): 8 is hard-coded here are the start of the data region blocks.
+                .map(|v| v + 8)
                 .collect();
             // Mark new blocks as allocated.
             for &new_block in new_blocks.iter() {
@@ -246,6 +272,9 @@ impl<T: BlockStorage> SFS<T> {
 
         let mut dir_contents = HashMap::new();
         for line in contents_parsed.lines() {
+            if line.get(0..1) == Some("\0") {
+                break;
+            }
             let mut contents = line.split(':');
             let entry_inum = contents.next().unwrap().parse::<u32>().unwrap();
             let entry_name = OsString::from(contents.next().unwrap());
@@ -264,11 +293,12 @@ impl<T: BlockStorage> SFS<T> {
             .unwrap()
             .blocks
             .iter()
-            .filter(|block| *block > &(self.super_block.inodes_count + 3))
+            // TODO(allancalix): Fix hard-coded data region start.
+            .filter(|block| **block >= 8_u32)
             .copied()
             .collect();
 
-        let mut content = vec![0; allocated_blocks.len()];
+        let mut content = vec![0; allocated_blocks.len() * BLOCK_SIZE];
         for (i, &block) in allocated_blocks.iter().enumerate() {
             let start = i * BLOCK_SIZE;
             let end = start + BLOCK_SIZE;
@@ -327,6 +357,33 @@ mod tests {
         let mut fs = SFS::create(dev).unwrap();
 
         assert!(fs.open("/foo/bar", OpenMode::CREATE).is_err());
+    }
+
+    #[test]
+    fn can_create_a_subdirectory() {
+        let dev = create_test_device();
+        let mut fs = SFS::create(dev).unwrap();
+
+        assert_eq!(fs.mkdir("/foo").unwrap(), 1);
+    }
+
+    #[test]
+    fn can_open_an_existing_file_in_a_subdirectory() {
+        let dev = create_test_device();
+        let mut fs = SFS::create(dev).unwrap();
+
+        fs.mkdir("/foo").unwrap();
+        fs.open("/foo/bar.txt", OpenMode::CREATE).unwrap();
+
+        assert_eq!(fs.open("/foo/bar.txt", OpenMode::RO).unwrap(), 3);
+    }
+
+    #[test]
+    fn mkdir_with_missing_subdirectory_returns_error() {
+        let dev = create_test_device();
+        let mut fs = SFS::create(dev).unwrap();
+
+        assert!(fs.mkdir("/foo/bar").is_err());
     }
 
     #[test]

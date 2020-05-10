@@ -9,4 +9,3 @@ tempfile = "3.1.0"
 thiserror = "1.0.15"
 zerocopy = "0.3.0"
 log = "0.4.8"
-simplefs-fuse = { path = "../simplefs-fuse" }

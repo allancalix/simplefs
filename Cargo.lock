@@ -126,6 +126,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "examples"
+version = "0.1.0"
+dependencies = [
+ "simplefs-fuse",
+]
+
+[[package]]
 name = "getrandom"
 version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -346,7 +353,6 @@ name = "simplefs"
 version = "0.1.0"
 dependencies = [
  "log",
- "simplefs-fuse",
  "tempfile",
  "thiserror",
  "zerocopy",
