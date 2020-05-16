@@ -4,9 +4,22 @@ version = "0.1.0"
 authors = ["Allan Calix <contact@allancalix.com>"]
 edition = "2018"
 
+[lib]
+name = "simplefs"
+path = "src/lib.rs"
+
+[[bin]]
+name = "sfs_util"
+path = "src/cmd/utils.rs"
+
+[[bin]]
+name = "sfs"
+path = "src/cmd/main.rs"
+
 [dependencies]
 tempfile = "3.1.0"
 thiserror = "1.0.15"
 zerocopy = "0.3.0"
 log = "0.4.8"
 simplefs-fuse = { path = "../simplefs-fuse" }
+clap = "2.33.1"
