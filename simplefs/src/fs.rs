@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+use std::ffi::{OsStr, OsString};
 use std::path::Path;
 
 use crate::alloc::{Bitmap, NextAvailableAllocation};
@@ -5,9 +7,15 @@ use crate::io::BlockStorage;
 use crate::node::InodeGroup;
 use crate::sb::SuperBlock;
 
-use std::collections::HashMap;
-use std::ffi::OsString;
+#[cfg(target_os = "macos")]
+use fuse::ReplyXTimes;
+use fuse::{
+    FileAttr, FileType, Filesystem, ReplyAttr, ReplyBmap, ReplyCreate, ReplyData, ReplyDirectory,
+    ReplyEmpty, ReplyEntry, ReplyLock, ReplyOpen, ReplyStatfs, ReplyWrite, ReplyXattr, Request,
+};
+use libc::ENOENT;
 use thiserror::Error;
+use time::Timespec;
 
 const SB_MAGIC: u32 = 0x5346_5342; // SFSB
 
@@ -276,6 +284,294 @@ impl<T: BlockStorage> SFS<T> {
                 .read_block(block as usize, &mut content[start..end])?;
         }
         Ok(content)
+    }
+}
+
+impl<T: BlockStorage> Filesystem for SFS<T> {
+    fn init(&mut self, _req: &Request) -> Result<(), i32> {
+        info!("Filesystem mount requested.");
+        Ok(())
+    }
+
+    fn destroy(&mut self, _req: &Request) {
+        unimplemented!()
+    }
+
+    fn lookup(&mut self, _req: &Request, _parent: u64, _name: &OsStr, _reply: ReplyEntry) {
+        unimplemented!()
+    }
+
+    fn forget(&mut self, _req: &Request, _ino: u64, _nlookup: u64) {
+        unimplemented!()
+    }
+
+    fn getattr(&mut self, _req: &Request, ino: u64, reply: ReplyAttr) {
+        info!("Getting attributes for ino={}.", ino);
+        let zero_time = Timespec::new(0, 0);
+        let attr = FileAttr {
+            ino,
+            size: 0,
+            blocks: 0,
+            atime: zero_time.clone(),
+            mtime: zero_time.clone(),
+            ctime: zero_time.clone(),
+            crtime: zero_time.clone(),
+            kind: FileType::Directory,
+            perm: 0,
+            nlink: 0,
+            uid: 0,
+            gid: 0,
+            rdev: 0,
+            flags: 0,
+        };
+        reply.attr(&Timespec::new(0, 0), &attr);
+    }
+
+    fn setattr(
+        &mut self,
+        _req: &Request,
+        _ino: u64,
+        _mode: Option<u32>,
+        _uid: Option<u32>,
+        _gid: Option<u32>,
+        _size: Option<u64>,
+        _atime: Option<Timespec>,
+        _mtime: Option<Timespec>,
+        _fh: Option<u64>,
+        _crtime: Option<Timespec>,
+        _chgtime: Option<Timespec>,
+        _bkuptime: Option<Timespec>,
+        _flags: Option<u32>,
+        _reply: ReplyAttr,
+    ) {
+        unimplemented!()
+    }
+
+    fn readlink(&mut self, _req: &Request, _ino: u64, _reply: ReplyData) {
+        unimplemented!()
+    }
+
+    fn mknod(
+        &mut self,
+        _req: &Request,
+        _parent: u64,
+        _name: &OsStr,
+        _mode: u32,
+        _rdev: u32,
+        _reply: ReplyEntry,
+    ) {
+        unimplemented!()
+    }
+
+    fn mkdir(
+        &mut self,
+        _req: &Request,
+        _parent: u64,
+        _name: &OsStr,
+        _mode: u32,
+        _reply: ReplyEntry,
+    ) {
+        unimplemented!()
+    }
+
+    fn unlink(&mut self, _req: &Request, _parent: u64, _name: &OsStr, _reply: ReplyEmpty) {
+        unimplemented!()
+    }
+
+    fn rmdir(&mut self, _req: &Request, _parent: u64, _name: &OsStr, _reply: ReplyEmpty) {
+        unimplemented!()
+    }
+
+    fn symlink(
+        &mut self,
+        _req: &Request,
+        _parent: u64,
+        _name: &OsStr,
+        _link: &Path,
+        _reply: ReplyEntry,
+    ) {
+        unimplemented!()
+    }
+
+    fn rename(
+        &mut self,
+        _req: &Request,
+        _parent: u64,
+        _name: &OsStr,
+        _newparent: u64,
+        _newname: &OsStr,
+        _reply: ReplyEmpty,
+    ) {
+        unimplemented!()
+    }
+
+    fn link(
+        &mut self,
+        _req: &Request,
+        _ino: u64,
+        _newparent: u64,
+        _newname: &OsStr,
+        _reply: ReplyEntry,
+    ) {
+        unimplemented!()
+    }
+
+    fn open(&mut self, _req: &Request, _ino: u64, _flags: u32, _reply: ReplyOpen) {
+        unimplemented!()
+    }
+
+    fn read(
+        &mut self,
+        _req: &Request,
+        _ino: u64,
+        _fh: u64,
+        _offset: i64,
+        _size: u32,
+        _reply: ReplyData,
+    ) {
+        unimplemented!()
+    }
+
+    fn write(
+        &mut self,
+        _req: &Request,
+        _ino: u64,
+        _fh: u64,
+        _offset: i64,
+        _data: &[u8],
+        _flags: u32,
+        _reply: ReplyWrite,
+    ) {
+        unimplemented!()
+    }
+
+    fn flush(&mut self, _req: &Request, _ino: u64, _fh: u64, _lock_owner: u64, _reply: ReplyEmpty) {
+        unimplemented!()
+    }
+
+    fn release(
+        &mut self,
+        _req: &Request,
+        _ino: u64,
+        _fh: u64,
+        _flags: u32,
+        _lock_owner: u64,
+        _flush: bool,
+        _reply: ReplyEmpty,
+    ) {
+        unimplemented!()
+    }
+
+    fn fsync(&mut self, _req: &Request, _ino: u64, _fh: u64, _datasync: bool, _reply: ReplyEmpty) {
+        unimplemented!()
+    }
+
+    fn readdir(
+        &mut self,
+        _req: &Request,
+        ino: u64,
+        _fh: u64,
+        offset: i64,
+        mut reply: ReplyDirectory,
+    ) {
+        //TODO(allancalix): The fuse crate starts inodes at 1, translate down to 0 internally.
+        let ino = ino - 1;
+        info!("Reading directory inode={}.", ino);
+        let contents = self.read_dir(ino as u32);
+        if contents.is_err() {
+            warn!("Error reading inode={}.", ino);
+            return reply.error(ENOENT);
+        }
+
+        if offset == 2 {
+            return reply.ok();
+        }
+
+        debug!("Pulled contents for directory {:?}.", contents);
+        // Add self.
+        reply.add(1, 1, FileType::Directory, ".");
+        // Add parent dir.
+        reply.add(1, 2, FileType::Directory, "..");
+        info!("Serving canned response.");
+        reply.ok()
+    }
+
+    fn access(&mut self, _req: &Request, _ino: u64, _mask: u32, _reply: ReplyEmpty) {
+        unimplemented!()
+    }
+
+    fn create(
+        &mut self,
+        _req: &Request,
+        _parent: u64,
+        _name: &OsStr,
+        _mode: u32,
+        _flags: u32,
+        _reply: ReplyCreate,
+    ) {
+        unimplemented!()
+    }
+
+    #[cfg(target_os = "macos")]
+    fn getlk(
+        &mut self,
+        _req: &Request,
+        _ino: u64,
+        _fh: u64,
+        _lock_owner: u64,
+        _start: u64,
+        _end: u64,
+        _typ: u32,
+        _pid: u32,
+        _reply: ReplyLock,
+    ) {
+        unimplemented!()
+    }
+
+    #[cfg(target_os = "macos")]
+    fn setlk(
+        &mut self,
+        _req: &Request,
+        _ino: u64,
+        _fh: u64,
+        _lock_owner: u64,
+        _start: u64,
+        _end: u64,
+        _typ: u32,
+        _pid: u32,
+        _sleep: bool,
+        _reply: ReplyEmpty,
+    ) {
+        unimplemented!()
+    }
+
+    #[cfg(target_os = "macos")]
+    fn bmap(&mut self, _req: &Request, _ino: u64, _blocksize: u32, _idx: u64, _reply: ReplyBmap) {
+        unimplemented!()
+    }
+
+    #[cfg(target_os = "macos")]
+    fn setvolname(&mut self, _req: &Request, _name: &OsStr, _reply: ReplyEmpty) {
+        unimplemented!()
+    }
+
+    #[cfg(target_os = "macos")]
+    fn exchange(
+        &mut self,
+        _req: &Request,
+        _parent: u64,
+        _name: &OsStr,
+        _newparent: u64,
+        _newname: &OsStr,
+        _options: u64,
+        _reply: ReplyEmpty,
+    ) {
+        unimplemented!()
+    }
+
+    #[cfg(target_os = "macos")]
+    fn getxtimes(&mut self, _req: &Request, _ino: u64, _reply: ReplyXTimes) {
+        unimplemented!()
     }
 }
 

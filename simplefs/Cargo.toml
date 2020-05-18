@@ -20,6 +20,11 @@ path = "src/cmd/main.rs"
 tempfile = "3.1.0"
 thiserror = "1.0.15"
 zerocopy = "0.3.0"
+env_logger = "0.7.1"
 log = "0.4.8"
+# TODO(allancalix): Put a version here.
+libc = "*"
 simplefs-fuse = { path = "../simplefs-fuse" }
 clap = "2.33.1"
+fuse = "0.3.1"
+time = "0.1.38"
